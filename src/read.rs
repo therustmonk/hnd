@@ -79,7 +79,7 @@ where
     fn read_into(&mut self, buf: &mut [u8]) -> io::Result<()> {
         let mut n = 0;
         while n < buf.len() {
-            let progress = try!(self.read(&mut buf[n..]));
+            let progress = self.read(&mut buf[n..])?;
             if progress > 0 {
                 n += progress;
             } else {
@@ -102,7 +102,7 @@ where
         let mut buf = [0u8; 1024];
         while n_read < n {
             let end = cmp::min(n - n_read, 1024);
-            let progress = try!(self.read(&mut buf[0..end]));
+            let progress = self.read(&mut buf[0..end])?;
             if progress > 0 {
                 n_read += progress;
             } else {
@@ -118,7 +118,7 @@ where
     #[inline(always)]
     fn read_4_bytes(&mut self) -> io::Result<[u8; 4]> {
         let mut buf = [0_u8; 4];
-        try!(self.read_into(&mut buf[..]));
+        self.read_into(&mut buf[..])?;
         Ok(buf)
     }
 
@@ -130,7 +130,7 @@ where
     #[inline(always)]
     fn read_u8(&mut self) -> io::Result<u8> {
         let mut buf = [0u8; 1];
-        try!(self.read_into(&mut buf));
+        self.read_into(&mut buf)?;
         Ok(buf[0])
     }
 
@@ -142,7 +142,7 @@ where
     #[inline(always)]
     fn read_le_u16(&mut self) -> io::Result<u16> {
         let mut buf = [0u8; 2];
-        try!(self.read_into(&mut buf));
+        self.read_into(&mut buf)?;
         Ok((buf[1] as u16) << 8 | (buf[0] as u16))
     }
 
@@ -175,7 +175,7 @@ where
     #[inline(always)]
     fn read_le_u24(&mut self) -> io::Result<u32> {
         let mut buf = [0u8; 3];
-        try!(self.read_into(&mut buf));
+        self.read_into(&mut buf)?;
         Ok((buf[2] as u32) << 16 | (buf[1] as u32) << 8 | (buf[0] as u32))
     }
 
@@ -187,7 +187,7 @@ where
     #[inline(always)]
     fn read_le_u32(&mut self) -> io::Result<u32> {
         let mut buf = [0u8; 4];
-        try!(self.read_into(&mut buf));
+        self.read_into(&mut buf)?;
         Ok((buf[3] as u32) << 24
             | (buf[2] as u32) << 16
             | (buf[1] as u32) << 8
@@ -197,7 +197,7 @@ where
     #[inline(always)]
     fn read_le_f32(&mut self) -> io::Result<f32> {
         let mut buf = [0u8; 4];
-        try!(self.read_into(&mut buf));
+        self.read_into(&mut buf)?;
         Ok(f32::from_le_bytes(buf))
     }
 }
@@ -279,14 +279,14 @@ pub fn read_wave_header<R: io::Read>(reader: &mut R) -> Result<u64> {
     // into it is more cumbersome, but also avoids a heap allocation. Is
     // the compiler smart enough to avoid the heap allocation anyway? I
     // would not expect it to be.
-    if b"RIFF" != &try!(reader.read_4_bytes())[..] {
+    if b"RIFF" != &reader.read_4_bytes()?[..] {
         return Err(Error::FormatError("no RIFF tag found"));
     }
 
-    let file_len = try!(reader.read_le_u32());
+    let file_len = reader.read_le_u32()?;
 
     // Next four bytes indicate the file type, which should be WAVE.
-    if b"WAVE" != &try!(reader.read_4_bytes())[..] {
+    if b"WAVE" != &reader.read_4_bytes()?[..] {
         return Err(Error::FormatError("no WAVE tag found"));
     }
 
@@ -304,10 +304,10 @@ pub fn read_until_data<R: io::Read>(mut reader: R) -> Result<(WavSpecEx, u32)> {
     let mut spec_opt = None;
 
     loop {
-        let header = try!(WavReader::read_chunk_header(&mut reader));
+        let header = WavReader::read_chunk_header(&mut reader)?;
         match header.kind {
             ChunkKind::Fmt => {
-                let spec = try!(WavReader::read_fmt_chunk(&mut reader, header.len));
+                let spec = WavReader::read_fmt_chunk(&mut reader, header.len)?;
                 spec_opt = Some(spec);
             }
             ChunkKind::Fact => {
@@ -334,7 +334,7 @@ pub fn read_until_data<R: io::Read>(mut reader: R) -> Result<(WavSpecEx, u32)> {
             }
             ChunkKind::Unknown => {
                 // Ignore the chunk; skip all of its bytes.
-                try!(reader.skip_bytes(header.len as usize));
+                reader.skip_bytes(header.len as usize)?;
             }
         }
         // If no data chunk is ever encountered, the function will return
@@ -349,8 +349,8 @@ where
     /// Attempts to read an 8-byte chunk header.
     fn read_chunk_header(reader: &mut R) -> Result<ChunkHeader> {
         let mut kind_str = [0; 4];
-        try!(reader.read_into(&mut kind_str));
-        let len = try!(reader.read_le_u32());
+        reader.read_into(&mut kind_str)?;
+        let len = reader.read_le_u32()?;
 
         let kind = match &kind_str[..] {
             b"fmt " => ChunkKind::Fmt,
@@ -412,12 +412,12 @@ where
         // is misleading though, because it is the number of bits used to store
         // a sample, not all of the bits need to be valid for all versions of
         // the WAVE format.)
-        let format_tag = try!(reader.read_le_u16());
-        let n_channels = try!(reader.read_le_u16());
-        let n_samples_per_sec = try!(reader.read_le_u32());
-        let n_bytes_per_sec = try!(reader.read_le_u32());
-        let block_align = try!(reader.read_le_u16());
-        let bits_per_sample = try!(reader.read_le_u16());
+        let format_tag = reader.read_le_u16()?;
+        let n_channels = reader.read_le_u16()?;
+        let n_samples_per_sec = reader.read_le_u32()?;
+        let n_bytes_per_sec = reader.read_le_u32()?;
+        let block_align = reader.read_le_u16()?;
+        let bits_per_sample = reader.read_le_u16()?;
 
         if n_channels == 0 {
             return Err(Error::FormatError("file contains zero channels"));
@@ -463,14 +463,10 @@ where
         const EXTENSIBLE: u16 = 0xfffe;
         // We may update our WavSpec based on more data we read from the header.
         match format_tag {
-            PCM => try!(WavReader::read_wave_format_pcm(reader, chunk_len, &spec)),
+            PCM => WavReader::read_wave_format_pcm(reader, chunk_len, &spec)?,
             ADPCM => return Err(Error::Unsupported),
-            IEEE_FLOAT => try!(WavReader::read_wave_format_ieee_float(
-                reader, chunk_len, &mut spec
-            )),
-            EXTENSIBLE => try!(WavReader::read_wave_format_extensible(
-                reader, chunk_len, &mut spec
-            )),
+            IEEE_FLOAT => WavReader::read_wave_format_ieee_float(reader, chunk_len, &mut spec)?,
+            EXTENSIBLE => WavReader::read_wave_format_extensible(reader, chunk_len, &mut spec)?,
             _ => return Err(Error::Unsupported),
         };
 
@@ -497,7 +493,7 @@ where
             // additional data. However, for WAVE_FORMAT_PCM, the member should
             // be ignored, see https://msdn.microsoft.com/en-us/library/ms713497.aspx.
             // Nonzero values do in fact occur in practice.
-            let _cb_size = try!(reader.read_le_u16());
+            let _cb_size = reader.read_le_u16()?;
 
             // For WAVE_FORMAT_PCM in WAVEFORMATEX, only 8 or 16 bits per
             // sample are valid according to
@@ -515,7 +511,7 @@ where
 
         // If the chunk len was longer than expected, ignore the additional bytes.
         if chunk_len == 40 {
-            try!(reader.skip_bytes(22));
+            reader.skip_bytes(22)?;
         }
         Ok(())
     }
@@ -536,7 +532,7 @@ where
         if is_wave_format_ex {
             // For WAVE_FORMAT_IEEE_FLOAT which we are reading, there should
             // be no extra data, so `cbSize` should be 0.
-            let cb_size = try!(reader.read_le_u16());
+            let cb_size = reader.read_le_u16()?;
             if cb_size != 0 {
                 return Err(Error::FormatError("unexpected WAVEFORMATEX size"));
             }
@@ -569,7 +565,7 @@ where
         }
 
         // `cbSize` is the last field of the WAVEFORMATEX struct.
-        let cb_size = try!(reader.read_le_u16());
+        let cb_size = reader.read_le_u16()?;
 
         // `cbSize` must be at least 22, but in this case we assume that it is
         // 22, because we would not know how to handle extra data anyway.
@@ -591,10 +587,10 @@ where
         //   GUID    SubFormat;
         // } WAVEFORMATEXTENSIBLE, *PWAVEFORMATEXTENSIBLE;
         // ```
-        let valid_bits_per_sample = try!(reader.read_le_u16());
-        let _channel_mask = try!(reader.read_le_u32()); // Not used for now.
+        let valid_bits_per_sample = reader.read_le_u16()?;
+        let _channel_mask = reader.read_le_u32()?; // Not used for now.
         let mut subformat = [0u8; 16];
-        try!(reader.read_into(&mut subformat));
+        reader.read_into(&mut subformat)?;
 
         // Several GUIDS are defined. At the moment, only the following are supported:
         //
@@ -620,8 +616,8 @@ where
     /// The header is read immediately. Reading the data will be done on
     /// demand.
     pub fn new(mut reader: R) -> Result<WavReader<R>> {
-        try!(read_wave_header(&mut reader));
-        let (spec_ex, data_len) = try!(read_until_data(&mut reader));
+        read_wave_header(&mut reader)?;
+        let (spec_ex, data_len) = read_until_data(&mut reader)?;
 
         let num_samples = data_len / spec_ex.bytes_per_sample as u32;
 
@@ -733,7 +729,7 @@ where
         let sample_position = time * self.spec.channels as u32;
         let offset_samples = sample_position as i64 - self.samples_read as i64;
         let offset_bytes = offset_samples * bytes_per_sample as i64;
-        try!(self.reader.seek(io::SeekFrom::Current(offset_bytes)));
+        self.reader.seek(io::SeekFrom::Current(offset_bytes))?;
         self.samples_read = sample_position;
         Ok(())
     }
@@ -745,7 +741,7 @@ impl WavReader<io::BufReader<fs::File>> {
     /// This is a convenience constructor that opens a `File`, wraps it in a
     /// `BufReader` and then constructs a `WavReader` from it.
     pub fn open<P: AsRef<path::Path>>(filename: P) -> Result<WavReader<io::BufReader<fs::File>>> {
-        let file = try!(fs::File::open(filename));
+        let file = fs::File::open(filename)?;
         let buf_reader = io::BufReader::new(file);
         WavReader::new(buf_reader)
     }
