@@ -542,7 +542,7 @@ where
     /// This method must be called after all samples have been written. If it
     /// is not called, the destructor will finalize the file, but any errors
     /// that occur in the process cannot be observed in that manner.
-    pub fn finalize(mut self) -> Result<()> {
+    pub fn finalize(&mut self) -> Result<()> {
         self.finalized = true;
         self.update_header()?;
         // We need to perform a flush here to truly capture all errors before
@@ -550,8 +550,12 @@ where
         // may succeed, but the write to the underlying writer may fail. So
         // flush explicitly.
         self.writer.flush()?;
-        // Ok(self.writer)
         Ok(())
+    }
+
+    /// Detaches a writer back.
+    pub fn into_inner(self) -> W {
+        self.writer
     }
 
     /// Returns information about the WAVE file being written.
@@ -582,6 +586,7 @@ where
     }
 }
 
+/* TODO: Add a wrapper that calls `update_header` on Drop
 impl<W> Drop for WavWriter<W>
 where
     W: io::Write + io::Seek,
@@ -595,6 +600,7 @@ where
         }
     }
 }
+*/
 
 /// Reads the relevant parts of the header required to support append.
 ///
