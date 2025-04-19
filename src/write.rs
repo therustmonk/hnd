@@ -11,7 +11,7 @@
 // limitations under the License.
 
 use super::{Error, Result, Sample, SampleFormat, WavSpec, WavSpecEx};
-use read;
+use crate::read;
 use std::fs;
 use std::io;
 use std::io::{Seek, Write};

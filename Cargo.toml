@@ -2,7 +2,7 @@
 
 name = "hnd"
 version = "3.5.1"
-edition = "2015"
+edition = "2018"
 authors = ["Ruud van Asseldonk <dev@veniogames.com>"]
 description = "A wav encoding and decoding library"
 keywords = ["wav", "wave", "audio", "codec"]
