@@ -542,7 +542,7 @@ where
     /// This method must be called after all samples have been written. If it
     /// is not called, the destructor will finalize the file, but any errors
     /// that occur in the process cannot be observed in that manner.
-    pub fn finalize(mut self) -> Result<W> {
+    pub fn finalize(mut self) -> Result<()> {
         self.finalized = true;
         self.update_header()?;
         // We need to perform a flush here to truly capture all errors before
@@ -550,7 +550,8 @@ where
         // may succeed, but the write to the underlying writer may fail. So
         // flush explicitly.
         self.writer.flush()?;
-        Ok(self.writer)
+        // Ok(self.writer)
+        Ok(())
     }
 
     /// Returns information about the WAVE file being written.
