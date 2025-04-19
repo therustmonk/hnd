@@ -55,17 +55,17 @@
 
 #![warn(missing_docs)]
 
+use read::ReadExt;
 use std::error;
 use std::fmt;
 use std::io;
 use std::result;
-use read::ReadExt;
 use write::WriteExt;
 
 mod read;
 mod write;
 
-pub use read::{WavReader, WavIntoSamples, WavSamples, read_wave_header};
+pub use read::{read_wave_header, WavIntoSamples, WavReader, WavSamples};
 pub use write::{SampleWriter16, WavWriter};
 
 /// A type that can be used to represent audio samples.
@@ -402,10 +402,9 @@ impl fmt::Display for Error {
             Error::TooWide => {
                 formatter.write_str("The sample has more bits than the destination type.")
             }
-            Error::UnfinishedSample => {
-                formatter.write_str(
-                    "The number of samples written is not a multiple of the number of channels.")
-            }
+            Error::UnfinishedSample => formatter.write_str(
+                "The number of samples written is not a multiple of the number of channels.",
+            ),
             Error::Unsupported => {
                 formatter.write_str("The wave format of the file is not supported.")
             }
@@ -422,7 +421,9 @@ impl error::Error for Error {
             Error::IoError(ref err) => err.description(),
             Error::FormatError(reason) => reason,
             Error::TooWide => "the sample has more bits than the destination type",
-            Error::UnfinishedSample => "the number of samples written is not a multiple of the number of channels",
+            Error::UnfinishedSample => {
+                "the number of samples written is not a multiple of the number of channels"
+            }
             Error::Unsupported => "the wave format of the file is not supported",
             Error::InvalidSampleFormat => "the sample format differs from the destination format",
         }
@@ -459,13 +460,14 @@ pub type Result<T> = result::Result<T, Error>;
 // last 8-byte section (which does contain a hyphen, for reasons unknown to me).
 
 /// Subformat type for PCM audio with integer samples.
-const KSDATAFORMAT_SUBTYPE_PCM: [u8; 16] = [0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x80,
-                                            0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71];
+const KSDATAFORMAT_SUBTYPE_PCM: [u8; 16] = [
+    0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71,
+];
 
 /// Subformat type for IEEE_FLOAT audio with float samples.
-const KSDATAFORMAT_SUBTYPE_IEEE_FLOAT: [u8; 16] = [0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00,
-                                                   0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71];
-
+const KSDATAFORMAT_SUBTYPE_IEEE_FLOAT: [u8; 16] = [
+    0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71,
+];
 
 impl WavSpec {
     /// Get "stand-alone" wav header representing infinite or unknown size wav file.
@@ -482,20 +484,20 @@ impl WavSpec {
     /// ```no_run
     /// extern crate hound;
     /// use std::io::Write;
-    /// 
+    ///
     /// let spec = hound::WavSpec {
     ///     bits_per_sample: 16,
     ///     channels: 1,
     ///     sample_format: hound::SampleFormat::Int,
     ///     sample_rate: 16000,
     /// };
-    /// 
+    ///
     /// let v = spec.into_header_for_infinite_file();
-    /// 
+    ///
     /// let so = std::io::stdout();
     /// let mut so = so.lock();
     /// so.write_all(&v[..]).unwrap();
-    /// 
+    ///
     /// loop {
     ///    for i in 0..126 {
     ///       let x : i16 = (i * 256) as i16;
@@ -512,15 +514,24 @@ impl WavSpec {
         let mut v = c.into_inner();
 
         // Set WAVE chunk size to a special signal value
-        v[4] = 0xFF; v[5] = 0xFF; v[6] = 0xFF; v[7] = 0xFF;
+        v[4] = 0xFF;
+        v[5] = 0xFF;
+        v[6] = 0xFF;
+        v[7] = 0xFF;
 
         // Detect fmt size, get offset of data chunk's size and set it to signal value
         if v[16] == 0x10 {
             // pcm wave
-            v[0x28] = 0xFF; v[0x29] = 0xFF; v[0x2A] = 0xFF; v[0x2B] = 0xFF; 
+            v[0x28] = 0xFF;
+            v[0x29] = 0xFF;
+            v[0x2A] = 0xFF;
+            v[0x2B] = 0xFF;
         } else if v[16] == 0x28 {
             // extensible
-            v[0x40] = 0xFF; v[0x41] = 0xFF; v[0x42] = 0xFF; v[0x43] = 0xFF; 
+            v[0x40] = 0xFF;
+            v[0x41] = 0xFF;
+            v[0x42] = 0xFF;
+            v[0x43] = 0xFF;
         } else {
             unreachable!()
         }
@@ -582,7 +593,9 @@ fn write_read_i16_via_sample_writer_is_lossless() {
             {
                 let mut sample_writer = writer.get_i16_writer(1024);
                 for s in 0i16..1024 {
-                    unsafe { sample_writer.write_sample_unchecked(s); }
+                    unsafe {
+                        sample_writer.write_sample_unchecked(s);
+                    }
                 }
                 sample_writer.flush().unwrap();
             }
@@ -661,7 +674,8 @@ fn write_read_i24_is_lossless() {
         assert_eq!(reader.len(), 256);
         for (expected, read) in (-128_i32..127 + 1)
             .map(|x| x * 256 * 256)
-            .zip(reader.samples()) {
+            .zip(reader.samples())
+        {
             assert_eq!(expected, read.unwrap());
         }
     }
@@ -689,9 +703,7 @@ fn write_read_f32_is_lossless() {
         let mut reader = WavReader::new(&mut buffer).unwrap();
         assert_eq!(write_spec, reader.spec());
         assert_eq!(reader.len(), 256);
-        for (expected, read) in (1..257)
-            .map(|x| 1.0_f32 / x as f32)
-            .zip(reader.samples()) {
+        for (expected, read) in (1..257).map(|x| 1.0_f32 / x as f32).zip(reader.samples()) {
             assert_eq!(expected, read.unwrap());
         }
     }
@@ -713,8 +725,8 @@ fn no_32_bps_for_float_sample_format_panics() {
 
 #[test]
 fn flush_should_produce_valid_file() {
-    use std::mem;
     use std::io::Seek;
+    use std::mem;
 
     let mut buffer = io::Cursor::new(Vec::new());
     let samples = &[2, 4, 5, 7, 11, 13];
@@ -746,9 +758,7 @@ fn flush_should_produce_valid_file() {
     buffer.seek(io::SeekFrom::Start(0)).unwrap();
 
     let mut reader = WavReader::new(&mut buffer).unwrap();
-    let read_samples: Vec<i16> = reader.samples()
-        .map(|r| r.unwrap())
-        .collect();
+    let read_samples: Vec<i16> = reader.samples().map(|r| r.unwrap()).collect();
 
     // We expect to see all samples up to the flush, but not the later ones.
     assert_eq!(&read_samples[..], &samples[..]);
@@ -770,7 +780,9 @@ fn new_append_should_append() {
     // Write initial file.
     {
         let mut writer = WavWriter::new(&mut buffer, spec).unwrap();
-        for s in samples { writer.write_sample(*s).unwrap(); }
+        for s in samples {
+            writer.write_sample(*s).unwrap();
+        }
     }
 
     buffer.seek(io::SeekFrom::Start(0)).unwrap();
@@ -779,15 +791,15 @@ fn new_append_should_append() {
     {
         let mut writer = WavWriter::new_append(&mut buffer).unwrap();
         assert_eq!(writer.spec(), spec);
-        for s in samples { writer.write_sample(*s).unwrap(); }
+        for s in samples {
+            writer.write_sample(*s).unwrap();
+        }
     }
 
     buffer.seek(io::SeekFrom::Start(0)).unwrap();
 
     let mut reader = WavReader::new(&mut buffer).unwrap();
-    let read_samples: Vec<i16> = reader.samples()
-        .map(|r| r.unwrap())
-        .collect();
+    let read_samples: Vec<i16> = reader.samples().map(|r| r.unwrap()).collect();
 
     // We expect to see all samples up to the flush, but not the later ones.
     assert_eq!(&read_samples[..], &[2, 5, 7, 11, 2, 5, 7, 11]);
@@ -795,8 +807,8 @@ fn new_append_should_append() {
 
 #[test]
 fn new_append_does_not_corrupt_files() {
-    use std::io::Read;
     use std::fs;
+    use std::io::Read;
 
     let sample_files = [
         "testsamples/pcmwaveformat-16bit-44100Hz-mono-extra.wav",
@@ -842,8 +854,7 @@ fn new_append_does_not_corrupt_files() {
 
         {
             let cursor = io::Cursor::new(buffer);
-            let mut reader = WavReader::new(cursor)
-                .expect("Reading wav failed after append.");
+            let mut reader = WavReader::new(cursor).expect("Reading wav failed after append.");
             samples_after = reader.samples().map(|r| r.unwrap()).collect();
         }
 
@@ -906,9 +917,12 @@ fn test_into_header_for_infinite_file() {
         sample_rate: 16000,
     };
     let v = spec.into_header_for_infinite_file();
-    assert_eq!(&v[..], &b"RIFF\xFF\xFF\xFF\xFFWAVE\
+    assert_eq!(
+        &v[..],
+        &b"RIFF\xFF\xFF\xFF\xFFWAVE\
 fmt \x10\x00\x00\x00\x01\x00\x01\x00\x80\x3e\x00\x00\x00\x7d\x00\x00\x02\x00\x10\x00\
-data\xFF\xFF\xFF\xFF"[..]);
+data\xFF\xFF\xFF\xFF"[..]
+    );
 
     let spec = WavSpec {
         bits_per_sample: 16,
@@ -917,9 +931,12 @@ data\xFF\xFF\xFF\xFF"[..]);
         sample_rate: 16000,
     };
     let v = spec.into_header_for_infinite_file();
-    assert_eq!(&v[..], &b"RIFF\xFF\xFF\xFF\xFFWAVE\
+    assert_eq!(
+        &v[..],
+        &b"RIFF\xFF\xFF\xFF\xFFWAVE\
 fmt \x28\x00\x00\x00\xfe\xff\x0a\x00\x80\x3e\x00\x00\x00\xe2\x04\x00\
 \x14\x00\x10\x00\x16\x00\x10\x00\xff\x03\x00\x00\x01\x00\x00\x00\
 \x00\x00\x10\x00\x80\x00\x00\xaa\x00\x38\x9b\x71\
-data\xFF\xFF\xFF\xFF"[..]);
+data\xFF\xFF\xFF\xFF"[..]
+    );
 }

@@ -10,14 +10,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use super::{Error, Result, Sample, SampleFormat, WavSpec, WavSpecEx};
+use read;
 use std::fs;
 use std::io;
-use std::mem;
 use std::io::{Seek, Write};
+use std::mem;
 use std::mem::MaybeUninit;
 use std::path;
-use super::{Error, Result, Sample, SampleFormat, WavSpec, WavSpecEx};
-use ::read;
 
 /// Extends the functionality of `io::Write` with additional methods.
 ///
@@ -58,7 +58,8 @@ pub trait WriteExt: io::Write {
 }
 
 impl<W> WriteExt for W
-    where W: io::Write
+where
+    W: io::Write,
 {
     #[inline(always)]
     fn write_u8(&mut self, x: u8) -> io::Result<()> {
@@ -158,7 +159,8 @@ fn verify_channel_mask() {
 /// called, the file will be finalized upon drop. However, finalization may
 /// fail, and without calling `finalize`, such a failure cannot be observed.
 pub struct WavWriter<W>
-    where W: io::Write + io::Seek
+where
+    W: io::Write + io::Seek,
 {
     /// Specifies properties of the audio data.
     spec: WavSpec,
@@ -195,7 +197,8 @@ enum FmtKind {
 }
 
 impl<W> WavWriter<W>
-    where W: io::Write + io::Seek
+where
+    W: io::Write + io::Seek,
 {
     /// Creates a writer that writes the WAVE format to the underlying writer.
     ///
@@ -213,7 +216,6 @@ impl<W> WavWriter<W>
         };
         WavWriter::new_with_spec_ex(writer, spec_ex)
     }
-
 
     /// Creates a writer that writes the WAVE format to the underlying writer.
     ///
@@ -262,7 +264,7 @@ impl<W> WavWriter<W>
         };
 
         if !supported {
-            return Err(Error::Unsupported)
+            return Err(Error::Unsupported);
         }
 
         // Write headers, up to the point where data should be written.
@@ -321,9 +323,7 @@ impl<W> WavWriter<W>
 
         // The field nSamplesPerSec.
         try!(buffer.write_le_u32(spec.sample_rate));
-        let bytes_per_sec = spec.sample_rate
-                          * self.bytes_per_sample as u32
-                          * spec.channels as u32;
+        let bytes_per_sec = spec.sample_rate * self.bytes_per_sample as u32 * spec.channels as u32;
 
         // The field nAvgBytesPerSec;
         try!(buffer.write_le_u32(bytes_per_sec));
@@ -348,17 +348,19 @@ impl<W> WavWriter<W>
             // WAVE_FORMAT_PCM
             SampleFormat::Int => {
                 try!(buffer.write_le_u16(1));
-            },
+            }
             // WAVE_FORMAT_IEEE_FLOAT
             SampleFormat::Float => {
                 if self.spec.bits_per_sample == 32 {
                     try!(buffer.write_le_u16(3));
                 } else {
-                    panic!("Invalid number of bits per sample. \
-                           When writing SampleFormat::Float, \
-                           bits_per_sample must be 32.");
+                    panic!(
+                        "Invalid number of bits per sample. \
+                         When writing SampleFormat::Float, \
+                         bits_per_sample must be 32."
+                    );
                 }
-            },
+            }
         };
 
         try!(self.write_waveformat(buffer));
@@ -409,9 +411,11 @@ impl<W> WavWriter<W>
                 if self.spec.bits_per_sample == 32 {
                     super::KSDATAFORMAT_SUBTYPE_IEEE_FLOAT
                 } else {
-                    panic!("Invalid number of bits per sample. \
-                           When writing SampleFormat::Float, \
-                           bits_per_sample must be 32.");
+                    panic!(
+                        "Invalid number of bits per sample. \
+                         When writing SampleFormat::Float, \
+                         bits_per_sample must be 32."
+                    );
                 }
             }
         };
@@ -451,9 +455,7 @@ impl<W> WavWriter<W>
     ///
     /// Attempting to write more than `num_samples` samples to the writer will
     /// panic too.
-    pub fn get_i16_writer<'s>(&'s mut self,
-                              num_samples: u32)
-                              -> SampleWriter16<'s, W> {
+    pub fn get_i16_writer<'s>(&'s mut self, num_samples: u32) -> SampleWriter16<'s, W> {
         if self.spec.sample_format != SampleFormat::Int {
             panic!("When calling get_i16_writer, the sample format must be int.");
         }
@@ -472,7 +474,9 @@ impl<W> WavWriter<W>
             // The potentially garbage memory here will not be exposed: the
             // buffer is only exposed when flushing, but `flush()` asserts that
             // all samples have been written.
-            unsafe { new_buffer.set_len(num_bytes); }
+            unsafe {
+                new_buffer.set_len(num_bytes);
+            }
 
             self.sample_writer_buffer = new_buffer;
         }
@@ -493,14 +497,16 @@ impl<W> WavWriter<W>
 
         try!(self.writer.seek(io::SeekFrom::Start(4)));
         try!(self.writer.write_le_u32(file_size));
-        try!(self.writer.seek(io::SeekFrom::Start(self.data_len_offset as u64)));
+        try!(self
+            .writer
+            .seek(io::SeekFrom::Start(self.data_len_offset as u64)));
         try!(self.writer.write_le_u32(self.data_bytes_written));
 
         // Signal error if the last sample was not finished, but do so after
         // everything has been written, so that no data is lost, even though
         // the file is now ill-formed.
-        if (self.data_bytes_written / self.bytes_per_sample as u32)
-            % self.spec.channels as u32 != 0 {
+        if (self.data_bytes_written / self.bytes_per_sample as u32) % self.spec.channels as u32 != 0
+        {
             Err(Error::UnfinishedSample)
         } else {
             Ok(())
@@ -577,7 +583,8 @@ impl<W> WavWriter<W>
 }
 
 impl<W> Drop for WavWriter<W>
-    where W: io::Write + io::Seek
+where
+    W: io::Write + io::Seek,
 {
     fn drop(&mut self) {
         // If the file was not explicitly finalized (to update the headers), do
@@ -642,9 +649,10 @@ impl WavWriter<io::BufWriter<fs::File>> {
     /// This is a convenience constructor that creates the file, wraps it in a
     /// `BufWriter`, and then constructs a `WavWriter` from it. The file will
     /// be overwritten if it exists.
-    pub fn create<P: AsRef<path::Path>>(filename: P,
-                                        spec: WavSpec)
-                                        -> Result<WavWriter<io::BufWriter<fs::File>>> {
+    pub fn create<P: AsRef<path::Path>>(
+        filename: P,
+        spec: WavSpec,
+    ) -> Result<WavWriter<io::BufWriter<fs::File>>> {
         let file = try!(fs::File::create(filename));
         let buf_writer = io::BufWriter::new(file);
         WavWriter::new(buf_writer, spec)
@@ -686,7 +694,10 @@ impl WavWriter<io::BufWriter<fs::File>> {
     }
 }
 
-impl<W> WavWriter<W> where W: io::Read + io::Write + io::Seek {
+impl<W> WavWriter<W>
+where
+    W: io::Read + io::Write + io::Seek,
+{
     /// Creates a writer that appends samples to an existing file stream.
     ///
     /// This first reads the existing header to obtain the spec, then seeks to
@@ -716,7 +727,6 @@ impl<W> WavWriter<W> where W: io::Read + io::Write + io::Seek {
     }
 }
 
-
 /// A writer that specifically only writes integer samples of 16 bits per sample.
 ///
 /// The writer buffers written samples internally so they can be written in a
@@ -733,7 +743,10 @@ impl<W> WavWriter<W> where W: io::Read + io::Write + io::Seek {
 ///
 /// A `SampleWriter16` can be obtained by calling [`WavWriter::get_i16_writer`](
 /// struct.WavWriter.html#method.get_i16_writer).
-pub struct SampleWriter16<'parent, W> where W: io::Write + io::Seek + 'parent {
+pub struct SampleWriter16<'parent, W>
+where
+    W: io::Write + io::Seek + 'parent,
+{
     /// The writer borrowed from the wrapped WavWriter.
     writer: &'parent mut W,
 
@@ -763,8 +776,10 @@ impl<'parent, W: io::Write + io::Seek> SampleWriter16<'parent, W> {
     /// Note that nothing is actually written until `flush()` is called.
     #[inline(always)]
     pub fn write_sample<S: Sample>(&mut self, sample: S) {
-        assert!((self.index as usize) + 2 <= self.buffer.len(),
-          "Trying to write more samples than reserved for the sample writer.");
+        assert!(
+            (self.index as usize) + 2 <= self.buffer.len(),
+            "Trying to write more samples than reserved for the sample writer."
+        );
 
         // SAFETY: We performed the bounds check in the above assertion.
         unsafe { self.write_sample_unchecked(sample) };
@@ -774,9 +789,14 @@ impl<'parent, W: io::Write + io::Seek> SampleWriter16<'parent, W> {
         // On little endian machines the compiler produces assembly code
         // that merges the following two lines into a single instruction.
         *self.buffer.get_unchecked_mut(self.index as usize) = MaybeUninit::new(value as u8);
-        self.buffer.get_unchecked_mut(self.index as usize).assume_init();
-        *self.buffer.get_unchecked_mut(self.index as usize + 1) = MaybeUninit::new((value >> 8) as u8);
-        self.buffer.get_unchecked_mut(self.index as usize + 1).assume_init();
+        self.buffer
+            .get_unchecked_mut(self.index as usize)
+            .assume_init();
+        *self.buffer.get_unchecked_mut(self.index as usize + 1) =
+            MaybeUninit::new((value >> 8) as u8);
+        self.buffer
+            .get_unchecked_mut(self.index as usize + 1)
+            .assume_init();
     }
 
     /// Like `write_sample()`, but does not perform a bounds check when writing
@@ -862,7 +882,10 @@ fn wide_write_should_signal_error() {
         assert!(writer.write_sample(128_i32).is_err());
     }
 
-    let spec16 = WavSpec { bits_per_sample: 16, ..spec8 };
+    let spec16 = WavSpec {
+        bits_per_sample: 16,
+        ..spec8
+    };
     {
         let mut writer = WavWriter::new(&mut buffer, spec16).unwrap();
         assert!(writer.write_sample(32767_i16).is_ok());
@@ -870,7 +893,10 @@ fn wide_write_should_signal_error() {
         assert!(writer.write_sample(32768_i32).is_err());
     }
 
-    let spec24 = WavSpec { bits_per_sample: 24, ..spec8 };
+    let spec24 = WavSpec {
+        bits_per_sample: 24,
+        ..spec8
+    };
     {
         let mut writer = WavWriter::new(&mut buffer, spec24).unwrap();
         assert!(writer.write_sample(8_388_607_i32).is_ok());
