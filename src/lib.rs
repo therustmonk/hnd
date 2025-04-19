@@ -21,15 +21,15 @@
 //! ```
 //! use std::f32::consts::PI;
 //! use std::i16;
-//! use hound;
+//! use hnd;
 //!
-//! let spec = hound::WavSpec {
+//! let spec = hnd::WavSpec {
 //!     channels: 1,
 //!     sample_rate: 44100,
 //!     bits_per_sample: 16,
-//!     sample_format: hound::SampleFormat::Int,
+//!     sample_format: hnd::SampleFormat::Int,
 //! };
-//! let mut writer = hound::WavWriter::create("sine.wav", spec).unwrap();
+//! let mut writer = hnd::WavWriter::create("sine.wav", spec).unwrap();
 //! for t in (0 .. 44100).map(|x| x as f32 / 44100.0) {
 //!     let sample = (t * 440.0 * 2.0 * PI).sin();
 //!     let amplitude = i16::MAX as f32;
@@ -42,9 +42,9 @@
 //! with at most 16 bits per sample.
 //!
 //! ```
-//! use hound;
+//! use hnd;
 //!
-//! let mut reader = hound::WavReader::open("testsamples/pop.wav").unwrap();
+//! let mut reader = hnd::WavReader::open("testsamples/pop.wav").unwrap();
 //! let sqr_sum = reader.samples::<i16>()
 //!                     .fold(0.0, |sqr_sum, s| {
 //!     let sample = s.unwrap() as f64;
@@ -482,13 +482,12 @@ impl WavSpec {
     /// Example:
     ///
     /// ```no_run
-    /// extern crate hound;
     /// use std::io::Write;
     ///
-    /// let spec = hound::WavSpec {
+    /// let spec = hnd::WavSpec {
     ///     bits_per_sample: 16,
     ///     channels: 1,
-    ///     sample_format: hound::SampleFormat::Int,
+    ///     sample_format: hnd::SampleFormat::Int,
     ///     sample_rate: 16000,
     /// };
     ///
@@ -501,7 +500,7 @@ impl WavSpec {
     /// loop {
     ///    for i in 0..126 {
     ///       let x : i16 = (i * 256) as i16;
-    ///       hound::Sample::write(x, &mut so, 16).unwrap();
+    ///       hnd::Sample::write(x, &mut so, 16).unwrap();
     ///    }
     /// }
     /// ```

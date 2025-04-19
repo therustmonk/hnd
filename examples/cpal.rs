@@ -12,16 +12,13 @@
 
 // This example shows how to play a wav file using the cpal crate.
 
-extern crate cpal;
-extern crate hound;
-
 use std::env;
 use std::thread;
 
 fn main() {
     // Make a WavReader that reads the file provided as program argument.
     let fname = env::args().nth(1).expect("no file given");
-    let mut reader = hound::WavReader::open(fname).unwrap();
+    let mut reader = hnd::WavReader::open(fname).unwrap();
     let spec = reader.spec();
 
     let endpoint = cpal::get_default_endpoint().unwrap();
@@ -82,7 +79,7 @@ fn main() {
     }
 }
 
-fn matches_format(format: &cpal::Format, spec: &hound::WavSpec) -> bool {
+fn matches_format(format: &cpal::Format, spec: &hnd::WavSpec) -> bool {
     let cpal::SamplesRate(sample_rate) = format.samples_rate;
     if sample_rate != spec.sample_rate {
         return false;
@@ -93,8 +90,8 @@ fn matches_format(format: &cpal::Format, spec: &hound::WavSpec) -> bool {
     }
 
     let data_type = match (spec.bits_per_sample, spec.sample_format) {
-        (16, hound::SampleFormat::Int) => Some(cpal::SampleFormat::I16),
-        (32, hound::SampleFormat::Float) => Some(cpal::SampleFormat::F32),
+        (16, hnd::SampleFormat::Int) => Some(cpal::SampleFormat::I16),
+        (32, hnd::SampleFormat::Float) => Some(cpal::SampleFormat::F32),
         _ => None,
     };
 

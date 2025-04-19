@@ -22,13 +22,11 @@
 // TODO: This example should probably be removed, it is just here for verifying
 // and assumption at this point.
 
-extern crate hound;
-
 use std::env;
 
 fn main() {
     let fname = env::args().nth(1).expect("no file given");
-    let mut reader = hound::WavReader::open(&fname).unwrap();
+    let mut reader = hnd::WavReader::open(&fname).unwrap();
     let samples: Vec<i16> = reader.samples().map(|s| s.unwrap()).collect();
 
     let (ts, tu, n) = samples.iter().fold((0.0, 0.0, 0.0), |(ts, tu, n), &s| {

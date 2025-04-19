@@ -17,21 +17,19 @@ use std::f32::consts::PI;
 use std::i16;
 use std::path::Path;
 
-extern crate hound;
-
 fn main() {
-    let spec = hound::WavSpec {
+    let spec = hnd::WavSpec {
         channels: 1,
         sample_rate: 44100,
         bits_per_sample: 16,
-        sample_format: hound::SampleFormat::Int,
+        sample_format: hnd::SampleFormat::Int,
     };
 
     let path: &Path = "sine.wav".as_ref();
 
     let mut writer = match path.is_file() {
-        true => hound::WavWriter::append(path).unwrap(),
-        false => hound::WavWriter::create(path, spec).unwrap(),
+        true => hnd::WavWriter::append(path).unwrap(),
+        false => hnd::WavWriter::create(path, spec).unwrap(),
     };
 
     // We should not append blindly, we should make sure that the existing file

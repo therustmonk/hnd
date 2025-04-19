@@ -2,14 +2,16 @@
 
 // Usage: cargo run --example wavstdout | mpv -
 
-extern crate hound;
+extern crate hnd;
+
+use hnd::Sample;
 use std::io::Write;
 
 fn main() {
-    let spec = hound::WavSpec {
+    let spec = hnd::WavSpec {
         bits_per_sample: 16,
         channels: 1,
-        sample_format: hound::SampleFormat::Int,
+        sample_format: hnd::SampleFormat::Int,
         sample_rate: 16000,
     };
 
@@ -21,7 +23,6 @@ fn main() {
 
     loop {
         for i in 0..126 {
-            use hound::Sample;
             let x: i16 = (i * 256) as i16;
             if x.write(&mut so, 16).is_err() {
                 return;
